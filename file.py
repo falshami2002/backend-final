@@ -1,15 +1,15 @@
 from datetime import date
 import re
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect, url_for, Response
 from flask_mysqldb import MySQL
 
 app = Flask(__name__)
 
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD']='test@123'
-app.config['MYSQL_HOST']='localhost'
-app.config['MYSQL_DB']='user'
-# app.config['MYSQL_CURSORCLASS']='DictCursor'
+app.config['MYSQL_USER'] = 'sql3691778'
+app.config['MYSQL_PASSWORD'] = 'aqnKdjcJ9A'
+app.config['MYSQL_HOST'] = 'sql3.freemysqlhosting.net'
+app.config['MYSQL_DB'] = 'sql3691778'
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
 
@@ -56,94 +56,132 @@ def fields(cursor):
 
     return results
 
-@app.route('/user/<string:username>')
-def get_user_by_name(username):
+@app.route('/team/<string:teamname>', methods=['GET'])
+def get_user_by_name(teamname):
     cur = mysql.connection.cursor()
-    select_stmt = "SELECT * FROM employees WHERE name = %(uname)s"
-    cur.execute(select_stmt, {'uname': username})
-    data = cur.fetchone()
-    print(data)
-    if data!=None:
-        field_map = fields(cur)
-        for row in field_map:
-            print(row)
-        row_res = dict(zip(field_map.keys(), data))
-        return "{name}, {date}".format(**data)
-    return "User Not Found", 400
+    select_stmt = "SELECT * FROM injuries WHERE team = %(tname)s"
+    cur.execute(select_stmt, {'tname': teamname})
+    data = cur.fetchall()
+    if data!=None and len(data) != 0:
+        injuries = []
+        for d in data:
+            injuries.append("{player}, {team}, {injury}, {returnDate}".format(**d)) 
+        return injuries
+    return "Team Not Found", 400
 
-@app.route('/login', methods =['GET', 'POST'])
+@app.route('/login', methods =['POST'])
 def login():
     cur = mysql.connection.cursor()
     account=''
     msg = ''
-    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
-        username = request.form['username']
-        password = request.form['password']
+    if request.method == 'POST' and request.args.get('username') and request.args.get('password'):
+        username = request.args.get('username')
+        password = request.args.get('password')
         cur.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password ))
         account = cur.fetchone()
-    if account:
-        msg = 'Logged in successfully !'
-        return render_template('index.html', msg=msg)
-    else:
-        msg = 'Incorrect username / password !'
-        return render_template('register.html')
-        # return ''' <form method="POST">
-        #        <div><label>UserName: <input type="text" name="username"></label></div>
-        #        <div><label>Password: <input type="text" name="password"></label></div>
-        #        <input type="submit" value="Submit">
-        #    </form>'''
+        if account:
+            res = Response('Logged in successfully')
+            res.headers['current-user'] = account['username']
+            res.status = 200
+            return res
+        else:
+            res = Response('Incorrect username / password !')
+            res.status = 400
+            return res
+    else:  
+        msg = 'Missing Information'
+        return msg, 400
 
-@app.route('/register', methods =['GET', 'POST'])
+@app.route('/register', methods =['POST'])
 def register():
     cur = mysql.connection.cursor()
     msg = ''
-    if request.method == 'POST' and \
-            'username' in request.form and 'password' in request.form and \
-            'email' in request.form and 'address' in request.form and 'city' \
-            in request.form and 'country' in request.form and 'postalcode' \
-            in request.form and 'organisation' in request.form:
-        username = request.form['username']
-        password = request.form['password']
-        email = request.form['email']
-        organisation = request.form['organisation']
-        address = request.form['address']
-        city = request.form['city']
-        state = request.form['state']
-        country = request.form['country']
-        postalcode = request.form['postalcode']
-        cur.execute('SELECT * FROM users WHERE username = % s', (username, ))
+    if request.method == 'POST'  and request.args.get('username') and request.args.get('password') and request.args.get('email'):
+        username = request.args.get('username')
+        password = request.args.get('password')
+        email = request.args.get('email')
+        cur.execute('SELECT * FROM accounts WHERE username = % s', [username])
         account = cur.fetchone()
         if account:
             msg = 'Account already exists !'
-            return msg
+            return msg, 400
         elif not re.match(r'[^@]+@[^@]+\.[^@]+', email):
             msg = 'Invalid email address !'
-            return msg
+            return msg, 400
         elif not re.match(r'[A-Za-z0-9]+', username):
             msg = 'name must contain only characters and numbers !'
-            return msg
+            return msg, 400
         else:
-            cur.execute('INSERT INTO users VALUES (% s, % s, % s, % s, % s, % s, % s, % s, % s)',
-                        (username, password, email, organisation, address, city, state, country, postalcode,))
+            cur.execute('INSERT INTO accounts VALUES (% s, % s, % s)',
+                        (username, password, email))
             mysql.connection.commit()
-            msg = 'You have successfully registered !'
-            return msg
+            msg = 'You have successfully registered!'
+            return msg, 200
+    else:  
+        msg = 'Missing Information'
+        return msg, 400
 
-    elif request.method == 'GET':
-        msg = 'Please fill out the form !'
-        return ''' <form method="POST">
-                  <div><label>UserName: <input type="text" name="username"></label></div>
-                  <div><label>Password: <input type="text" name="password"></label></div>
-                  <div><label>Email: <input type="text" name="email"></label></div>
-                  <div><label>Organisation: <input type="text" name="organisation"></label></div>
-                  <div><label>Address: <input type="text" name="address"></label></div>
-                  <div><label>City: <input type="text" name="city"></label></div>
-                  <div><label>State: <input type="text" name="state"></label></div>
-                  <div><label>Country: <input type="text" name="country"></label></div>
-                  <div><label>Postalcode: <input type="text" name="postalcode"></label></div>
-                  <input type="submit" value="Submit">
-              </form>'''
-
+@app.route('/delete-account', methods =['DELETE'])
+def deleteAccount():
+    cur = mysql.connection.cursor()
+    account=''
+    msg = ''
+    if request.method == 'DELETE' and request.args.get('username') and request.args.get('password'):
+        username = request.args.get('username')
+        password = request.args.get('password')
+        cur.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password ))
+        account = cur.fetchone()
+        if account:
+            cur.execute('DELETE FROM accounts WHERE username = % s', ([account['username']]))
+            mysql.connection.commit()
+            msg = 'Your account has been deleted'
+            return msg, 200
+        else:
+            msg = 'No account exists with this username and password'
+            return msg, 400
+    else:  
+        msg = 'Missing Information'
+        return msg, 400
+    
+@app.route('/change-account-info', methods =['PUT'])
+def changeAccountInfo():
+    cur = mysql.connection.cursor()
+    account=''
+    msg = ''
+    if request.method == 'PUT' and request.args.get('username') and request.args.get('password'):
+        username = request.args.get('username')
+        password = request.args.get('password')
+        cur.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password ))
+        account = cur.fetchone()
+        if account:
+            if request.headers.get('new-username') and request.headers.get('new-password'):
+                newUsername = request.headers.get('new-username')
+                newPassword = request.headers.get('new-password')
+                cur.execute('UPDATE accounts SET username = % s, password = % s WHERE username = % s', (newUsername, newPassword, account['username']))
+                mysql.connection.commit()
+                msg = f'Username updated to {newUsername}\nPassword updated'
+                return msg, 200
+            elif request.headers.get('new-username'):
+                newUsername = request.headers.get('new-username')
+                cur.execute('UPDATE accounts SET username = % s WHERE username = % s', (newUsername, account['username']))
+                mysql.connection.commit()
+                msg = f'Username updated to {newUsername}'
+                return msg, 200
+            elif request.headers.get('new-password'):
+                newPassword = request.headers.get('new-password')
+                cur.execute('UPDATE accounts SET password = % s WHERE username = % s', (newPassword, account['username']))
+                mysql.connection.commit()
+                msg = 'Password updated'
+                return msg, 200
+            else:
+                msg = 'No information was provided to update'
+                return msg, 400
+        else:
+            msg = 'Incorrect username / password!'
+            return msg, 400
+    else:  
+        msg = 'Missing Information'
+        return msg, 400
 
 if __name__ == '__main__':
     import sys
