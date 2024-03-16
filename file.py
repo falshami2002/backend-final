@@ -145,5 +145,16 @@ def register():
               </form>'''
 
 
-if __name__=='__main__':
-    app.run(host='0.0.0.0',debug=True)
+if __name__ == '__main__':
+    import sys
+    port = 5000
+    while True:
+        try:
+            app.run(host='0.0.0.0', port=port, debug=True)
+        except OSError as e:
+            if e.errno == 48:  # Address already in use
+                port += 1
+                continue
+            else:
+                print(f"Error: {e}")
+                sys.exit(1)
