@@ -2,8 +2,10 @@ from datetime import date
 import re
 from flask import Flask, request, render_template, redirect, url_for, Response
 from flask_mysqldb import MySQL
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 app.config['MYSQL_USER'] = 'sql3691778'
 app.config['MYSQL_PASSWORD'] = 'aqnKdjcJ9A'
