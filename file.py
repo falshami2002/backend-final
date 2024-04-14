@@ -60,16 +60,51 @@ def fields(cursor):
 
 @app.route('/team/<string:teamname>', methods=['GET'])
 def get_user_by_name(teamname):
+    parameters = ['team', 'player', 'injury', 'returnDate']
     cur = mysql.connection.cursor()
-    select_stmt = "SELECT * FROM injuries WHERE team = %(tname)s"
-    cur.execute(select_stmt, {'tname': teamname})
+    if(request.headers.get('order') in parameters):
+        order = request.headers.get('order')
+        cur.execute("SELECT * FROM injuries WHERE team = %s ORDER BY " + order, (teamname,))
+    elif(request.headers.get('order')):
+        res = Response('Invalid order header')
+        res.headers['invalid-header'] = request.headers.get('order')
+        res.status = 400
+        return res
+    else:
+        cur.execute("SELECT * FROM injuries WHERE team = %s", (teamname,))
     data = cur.fetchall()
     if data!=None and len(data) != 0:
         injuries = []
         for d in data:
             injuries.append("{player}, {team}, {injury}, {returnDate}".format(**d)) 
-        return injuries
-    return "Team Not Found", 400
+        return injuries, 200
+    res = Response('Invalid Team')
+    res.headers['invalid-team'] = teamname
+    res.status = 400
+    return res
+
+@app.route('/add-injuries', methods=['POST'])
+def addInjuries():
+    cur = mysql.connection.cursor()
+    msg = ''
+    if request.args.get('method') == 'JSON':
+        json = request.get_json()
+        for injury in json:
+            cur.execute('INSERT INTO injuries VALUES (%s, %s, %s, %s)', (injury.get('player'), injury.get('team'), injury.get('injury'), injury.get('returnDate')))
+        mysql.connection.commit()
+        msg = "Your JSON data has been inserted"
+        return msg, 200
+    elif request.args.get('method') == 'form':
+        player = request.form.get('player')
+        team = request.form.get('team')
+        injury = request.form.get('injury')
+        returnDate = request.form.get('returnDate')
+        cur.execute('INSERT INTO injuries VALUES (%s, %s, %s, %s)', (player, team, injury, returnDate))
+        mysql.connection.commit()
+        msg = "Your form data has been inserted"
+        return msg, 200
+    msg = "Invalid Method"
+    return msg, 400
 
 @app.route('/login', methods =['POST'])
 def login():
@@ -87,14 +122,12 @@ def login():
             res.status = 200
             return res
         else:
-            res = Response('Incorrect username / password !')
-            res.status = 400
-            return res
+            return redirect(url_for('register')), 300
     else:  
         msg = 'Missing Information'
         return msg, 400
 
-@app.route('/register', methods =['POST'])
+@app.route('/register', methods =['POST', 'GET'])
 def register():
     cur = mysql.connection.cursor()
     msg = ''
@@ -119,6 +152,9 @@ def register():
             mysql.connection.commit()
             msg = 'You have successfully registered!'
             return msg, 200
+    if request.method == 'GET':
+        msg = "Wrong username / password, you have been redirected to the register endpoint to create an account"
+        return msg, 300
     else:  
         msg = 'Missing Information'
         return msg, 400

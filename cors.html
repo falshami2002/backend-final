@@ -7,9 +7,8 @@
 </head>
 <body>
     <h1>CORS Demo</h1>
-    <button onclick="login()">Login</button>
-    <button onclick="register()">Register</button>
-    <button onclick="getInjuries()">Get Injuries</button>
+    <button onclick="getInjuries()">Get PSG Injuries</button>
+    <p id="injuries"></p>
     
     <script>
         function makeRequest(method, url, callback) {
@@ -28,21 +27,9 @@
             xhr.send();
         }
 
-        function login() {
-            makeRequest('POST', 'http://localhost:5000/login?username=user&password=pass', function(response) {
-                console.log(response);
-            });
-        }
-
-        function register() {
-            makeRequest('POST', 'http://localhost:5000/register?username=user&password=pass&email=user@example.com', function(response) {
-                console.log(response);
-            });
-        }
-
         function getInjuries() {
-            makeRequest('GET', 'http://localhost:5000/team/Barcelona', function(response) {
-                console.log(response);
+            makeRequest('GET', 'http://localhost:5000/team/PSG', function(response) {
+                document.querySelector('#injuries').innerHTML = response;
             });
         }
     </script>
