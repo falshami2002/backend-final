@@ -4,26 +4,36 @@ from flask import Flask, request, render_template, redirect, url_for, Response
 from flask_pymongo import PyMongo
 from flask_pymongo import MongoClient
 import urllib.parse
+import jwt
+import datetime
+from functools import wraps
 
 app = Flask(__name__)
 username = urllib.parse.quote_plus('falshami2002')
 password = urllib.parse.quote_plus('M4gLrURtaBBKPoYv')
 address = ("mongodb+srv://%s:%s@cluster0.6n6sslp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" % (username, password))
 mongo = MongoClient(address)
-print(mongo.injuries)
+app.config['SECRET_KEY'] = "random"
 
-def fields(cursor):
-    results = {}
-    column = 0
-    for d in cursor.description:
-        print(d)
-        results[d[0]] = column
-        column = column + 1
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if "Authorization" in request.cookies:
+            token = request.cookies["Authorization"]
+            try:
+                token = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
+                return f(token, *args, **kwargs)
+            except:
+                return redirect(url_for('login'))
+        else:
+            return redirect(url_for('login'))
 
-    return results
+    return decorated
 
 @app.route('/team/<string:teamname>', methods=['GET'])
-def get_user_by_name(teamname):
+@token_required
+def get_user_by_name(token, teamname):
     parameters = ['team', 'player', 'injury', 'returnDate']
     if(request.headers.get('order') in parameters):
         order = request.headers.get('order')
@@ -76,17 +86,23 @@ def addInjuries():
 
 @app.route('/login', methods =['POST'])
 def login():
-    cur = mysql.connection.cursor()
     account=''
     msg = ''
     if request.method == 'POST' and request.args.get('username') and request.args.get('password'):
         username = request.args.get('username')
         password = request.args.get('password')
-        cur.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password ))
-        account = cur.fetchone()
+        account = mongo.db.users.find_one({"username": username, "password": password})
         if account:
             res = Response('Logged in successfully')
             res.headers['current-user'] = account['username']
+            res.status = 200
+            print(account)
+            token = jwt.encode({
+            'public_id': str(account["_id"]),
+            'exp' : datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes = 30)
+            }, app.config['SECRET_KEY'])
+            res = Response(token)
+            res.set_cookie("Authorization", token)
             res.status = 200
             return res
         else:
@@ -97,14 +113,12 @@ def login():
 
 @app.route('/register', methods =['POST', 'GET'])
 def register():
-    cur = mysql.connection.cursor()
     msg = ''
     if request.method == 'POST'  and request.args.get('username') and request.args.get('password') and request.args.get('email'):
         username = request.args.get('username')
         password = request.args.get('password')
         email = request.args.get('email')
-        cur.execute('SELECT * FROM accounts WHERE username = % s', [username])
-        account = cur.fetchone()
+        account = mongo.db.users.find_one({"username": username})
         if account:
             msg = 'Account already exists !'
             return msg, 400
@@ -115,9 +129,7 @@ def register():
             msg = 'name must contain only characters and numbers !'
             return msg, 400
         else:
-            cur.execute('INSERT INTO accounts VALUES (% s, % s, % s)',
-                        (username, password, email))
-            mysql.connection.commit()
+            mongo.db.users.insert_one({"username": username, "password": password, "email": email})
             msg = 'You have successfully registered!'
             return msg, 200
     if request.method == 'GET':
@@ -128,18 +140,19 @@ def register():
         return msg, 400
 
 @app.route('/delete-account', methods =['DELETE'])
-def deleteAccount():
-    cur = mysql.connection.cursor()
+@token_required
+def deleteAccount(token):
     account=''
     msg = ''
     if request.method == 'DELETE' and request.args.get('username') and request.args.get('password'):
         username = request.args.get('username')
         password = request.args.get('password')
-        cur.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password ))
-        account = cur.fetchone()
+        account = mongo.db.users.find_one({"username": username, "password": password})
         if account:
-            cur.execute('DELETE FROM accounts WHERE username = % s', ([account['username']]))
-            mysql.connection.commit()
+            if(token.get("public_id") != str(account.get("_id"))):
+                msg = "You can only delete your own account"
+                return msg, 400
+            mongo.db.users.delete_one({"username": username, "password": password})
             msg = 'Your account has been deleted'
             return msg, 200
         else:
