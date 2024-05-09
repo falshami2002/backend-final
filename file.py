@@ -25,9 +25,9 @@ def token_required(f):
                 token = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
                 return f(token, *args, **kwargs)
             except:
-                return redirect(url_for('login'))
+                return "Invalid Token", 401
         else:
-            return redirect(url_for('login'))
+            return "Login to get a token", 401
 
     return decorated
 
@@ -62,14 +62,12 @@ def get_user_by_name(token, teamname):
     return res
 
 @app.route('/add-injuries', methods=['POST'])
-def addInjuries():
-    cur = mysql.connection.cursor()
+@token_required
+def addInjuries(token):
     msg = ''
     if request.args.get('method') == 'JSON':
         json = request.get_json()
-        for injury in json:
-            cur.execute('INSERT INTO injuries VALUES (%s, %s, %s, %s)', (injury.get('player'), injury.get('team'), injury.get('injury'), injury.get('returnDate')))
-        mysql.connection.commit()
+        mongo.db.injuries.insert_many(json)
         msg = "Your JSON data has been inserted"
         return msg, 200
     elif request.args.get('method') == 'form':
@@ -77,8 +75,7 @@ def addInjuries():
         team = request.form.get('team')
         injury = request.form.get('injury')
         returnDate = request.form.get('returnDate')
-        cur.execute('INSERT INTO injuries VALUES (%s, %s, %s, %s)', (player, team, injury, returnDate))
-        mysql.connection.commit()
+        mongo.db.injuries.insert_one({"player": player, "team": team, "injury": injury, "returnDate": returnDate})
         msg = "Your form data has been inserted"
         return msg, 200
     msg = "Invalid Method"
@@ -151,7 +148,7 @@ def deleteAccount(token):
         if account:
             if(token.get("public_id") != str(account.get("_id"))):
                 msg = "You can only delete your own account"
-                return msg, 400
+                return msg, 401
             mongo.db.users.delete_one({"username": username, "password": password})
             msg = 'Your account has been deleted'
             return msg, 200
@@ -163,33 +160,31 @@ def deleteAccount(token):
         return msg, 400
     
 @app.route('/change-account-info', methods =['PUT'])
-def changeAccountInfo():
-    cur = mysql.connection.cursor()
+@token_required
+def changeAccountInfo(token):
     account=''
     msg = ''
     if request.method == 'PUT' and request.args.get('username') and request.args.get('password'):
         username = request.args.get('username')
         password = request.args.get('password')
-        cur.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password ))
-        account = cur.fetchone()
+        account = mongo.db.users.find_one({"username": username, "password": password})
+        if(account and token.get("public_id") != str(account.get("_id"))):
+            return "You can only change your own account info", 401
         if account:
             if request.headers.get('new-username') and request.headers.get('new-password'):
                 newUsername = request.headers.get('new-username')
                 newPassword = request.headers.get('new-password')
-                cur.execute('UPDATE accounts SET username = % s, password = % s WHERE username = % s', (newUsername, newPassword, account['username']))
-                mysql.connection.commit()
+                mongo.db.users.update_one(account, {"$set": {"username": newUsername, "password": newPassword}})
                 msg = f'Username updated to {newUsername}\nPassword updated'
                 return msg, 200
             elif request.headers.get('new-username'):
                 newUsername = request.headers.get('new-username')
-                cur.execute('UPDATE accounts SET username = % s WHERE username = % s', (newUsername, account['username']))
-                mysql.connection.commit()
+                mongo.db.users.update_one(account, {"$set": {"username": newUsername}})
                 msg = f'Username updated to {newUsername}'
                 return msg, 200
             elif request.headers.get('new-password'):
                 newPassword = request.headers.get('new-password')
-                cur.execute('UPDATE accounts SET password = % s WHERE username = % s', (newPassword, account['username']))
-                mysql.connection.commit()
+                mongo.db.users.update_one(account, {"$set": {"password": newPassword}})
                 msg = 'Password updated'
                 return msg, 200
             else:
