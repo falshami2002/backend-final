@@ -1,52 +1,16 @@
 from datetime import date
 import re
 from flask import Flask, request, render_template, redirect, url_for, Response
-from flask_mysqldb import MySQL
-from flask_cors import CORS
+from flask_pymongo import PyMongo
+from flask_pymongo import MongoClient
+import urllib.parse
 
 app = Flask(__name__)
-CORS(app)
-
-app.config['MYSQL_USER'] = 'sql3691778'
-app.config['MYSQL_PASSWORD'] = 'aqnKdjcJ9A'
-app.config['MYSQL_HOST'] = 'sql3.freemysqlhosting.net'
-app.config['MYSQL_DB'] = 'sql3691778'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-
-mysql = MySQL(app)
-
-@app.route('/')
-def index():
-    cur = mysql.connection.cursor()
-#     cur.execute('''CREATE PROCEDURE getusers()
-# BEGIN
-#   SELECT * FROM user.employees;
-# END;
-# ''')
-    cur.callproc('getusers')
-    # data = cur.fetchall()
-    for result in cur.fetchall():
-         print(result)
-         print(f'Name: {result[0]}, Date: {result[1]}')
-    # return render_template('data.html',data=data)
-    cur.close()
-    return "Procedure Done!"
-
-@app.route('/add-users')
-def add_users():
-    cur = mysql.connection.cursor()
-    data = [
-        ('Jane', date(2005, 2, 12)),
-        ('Joe', date(2006, 5, 23)),
-        ('John', date(2010, 10, 3)),
-    ]
-    # cur.execute('''CREATE TABLE employees(name VARCHAR(50), date DATE)''')
-
-    stmt = "INSERT INTO employees (name, date) VALUES (%s, %s)"
-    cur.executemany(stmt,data)
-    mysql.connection.commit()
-    cur.close()
-    return "Data Created!"
+username = urllib.parse.quote_plus('falshami2002')
+password = urllib.parse.quote_plus('M4gLrURtaBBKPoYv')
+address = ("mongodb+srv://%s:%s@cluster0.6n6sslp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" % (username, password))
+mongo = MongoClient(address)
+print(mongo.injuries)
 
 def fields(cursor):
     results = {}
@@ -61,18 +25,22 @@ def fields(cursor):
 @app.route('/team/<string:teamname>', methods=['GET'])
 def get_user_by_name(teamname):
     parameters = ['team', 'player', 'injury', 'returnDate']
-    cur = mysql.connection.cursor()
     if(request.headers.get('order') in parameters):
         order = request.headers.get('order')
-        cur.execute("SELECT * FROM injuries WHERE team = %s ORDER BY " + order, (teamname,))
+        players = mongo.db.injuries.find({"team": teamname}).sort(order)
     elif(request.headers.get('order')):
         res = Response('Invalid order header')
         res.headers['invalid-header'] = request.headers.get('order')
         res.status = 400
         return res
     else:
-        cur.execute("SELECT * FROM injuries WHERE team = %s", (teamname,))
-    data = cur.fetchall()
+        players = mongo.db.injuries.find({"team": teamname})
+    data = []
+    while(True):
+        try:
+            data.append(players.next())
+        except StopIteration:
+            break
     if data!=None and len(data) != 0:
         injuries = []
         for d in data:
