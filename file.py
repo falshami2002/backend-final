@@ -7,6 +7,7 @@ import urllib.parse
 import jwt
 import datetime
 from functools import wraps
+import json as jsonmodule
 
 app = Flask(__name__)
 username = urllib.parse.quote_plus('falshami2002')
@@ -78,6 +79,13 @@ def addInjuries(token):
         mongo.db.injuries.insert_one({"player": player, "team": team, "injury": injury, "returnDate": returnDate})
         msg = "Your form data has been inserted"
         return msg, 200
+    elif request.args.get('method') == 'file':
+        print("LLL")
+        file = request.files['file']        
+        myFile = jsonmodule.loads(file.read())
+        for injury in myFile:
+            mongo.db.injuries.insert_one({"player": injury.get("player"), "team": injury.get("team"), "injury": injury.get("injury"), "returnDate": injury.get("returnDate")})
+        return "Your file data has been inserted", 200
     msg = "Invalid Method"
     return msg, 400
 
