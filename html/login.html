@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,14 +31,16 @@
         }
     </style>
 </head>
+
 <body>
     <div class="topnav">
-        <a href="/">Home</a>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-        <a href="/add-injury">Add Injury</a>
-        <a class="active" href="/search">Search Player</a>
-        <a href="/change-account-info">Change Account Info</a>
+        <a href="index.html">Home</a>
+        <a class="active" href="login.html">Login</a>
+        <a href="register.html">Register</a>
+        <a href="add-injury.html">Add Injury</a>
+        <a href="search_injury.html">Search Team</a>
+        <a href="change-account-info.html">Change Account Info</a>
+        <a href="delete-account.html">Delete Account</a>
     </div>
 
     <h1>Login</h1>
@@ -51,5 +54,32 @@
 
         <button type="submit">Login</button>
     </form>
+
+    <h2 id="status"></h2>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+
+            let url = new URL("http://127.0.0.1:5000/login")
+
+            formData.forEach((value, key) => {
+                url.searchParams.append(key, value);
+            });
+
+            fetch(url, {
+                method: 'POST',
+                credentials: 'include'
+            })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    document.getElementById("status").innerHTML = data;
+                })
+            })
+    </script>
 </body>
+
 </html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,23 +31,47 @@
         }
     </style>
 </head>
+
 <body>
     <div class="topnav">
-        <a href="/">Home</a>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-        <a href="/add-injury">Add Injury</a>
-        <a class="active" href="/search">Search Player</a>
-        <a href="/change-account-info">Change Account Info</a>
+        <a href="index.html">Home</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+        <a href="add-injury.html">Add Injury</a>
+        <a class="active" href="search_injury.html">Search Team</a>
+        <a href="change-account-info.html">Change Account Info</a>
+        <a href="delete-account.html">Delete Account</a>
     </div>
 
-    <h1>Search Player</h1>
+    <h1>Search Team</h1>
 
-    <form id="searchPlayerForm" method="GET" action="/team">
+    <form id="searchPlayerForm">
         <label for="team">Team:</label>
         <input type="text" id="team" name="team" required><br><br>
 
         <button type="submit">Search</button>
     </form>
+    <h2 id="status"></h2>
+    <script>
+        document.getElementById('searchPlayerForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            let team = document.getElementById("team").value
+
+            let url = `http://127.0.0.1:5000/team/${team}`
+            console.log(url)
+
+            fetch(url, {
+                method: 'GET',
+                credentials: 'include'
+            })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    document.getElementById("status").innerHTML = data;
+                })
+        })
+    </script>
 </body>
+
 </html>

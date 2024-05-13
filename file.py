@@ -8,8 +8,11 @@ import jwt
 import datetime
 from functools import wraps
 import json as jsonmodule
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, origins=["http://127.0.0.1:5500", "http://127.0.0.1:5500/"], supports_credentials=True)
+
 username = urllib.parse.quote_plus('falshami2002')
 password = urllib.parse.quote_plus('M4gLrURtaBBKPoYv')
 address = ("mongodb+srv://%s:%s@cluster0.6n6sslp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" % (username, password))
@@ -55,8 +58,11 @@ def get_user_by_name(token, teamname):
     if data!=None and len(data) != 0:
         injuries = []
         for d in data:
-            injuries.append("{player}, {team}, {injury}, {returnDate}".format(**d)) 
-        return injuries, 200
+            injuries.append("{player}, {team}, {injury}, {returnDate}\n".format(**d)) 
+        
+        res = Response(injuries)
+        res.status = 200
+        return res
     res = Response('Invalid Team')
     res.headers['invalid-team'] = teamname
     res.status = 400
@@ -65,29 +71,32 @@ def get_user_by_name(token, teamname):
 @app.route('/add-injuries', methods=['POST'])
 @token_required
 def addInjuries(token):
-    msg = ''
     if request.args.get('method') == 'JSON':
         json = request.get_json()
         mongo.db.injuries.insert_many(json)
-        msg = "Your JSON data has been inserted"
-        return msg, 200
+        res = Response("Your JSON data has been inserted")
+        res.status = 200
+        return res
     elif request.args.get('method') == 'form':
         player = request.form.get('player')
         team = request.form.get('team')
         injury = request.form.get('injury')
         returnDate = request.form.get('returnDate')
         mongo.db.injuries.insert_one({"player": player, "team": team, "injury": injury, "returnDate": returnDate})
-        msg = "Your form data has been inserted"
-        return msg, 200
+        res = Response("Your form data has been inserted")
+        res.status = 200
+        return res
     elif request.args.get('method') == 'file':
-        print("LLL")
         file = request.files['file']        
         myFile = jsonmodule.loads(file.read())
         for injury in myFile:
             mongo.db.injuries.insert_one({"player": injury.get("player"), "team": injury.get("team"), "injury": injury.get("injury"), "returnDate": injury.get("returnDate")})
-        return "Your file data has been inserted", 200
-    msg = "Invalid Method"
-    return msg, 400
+        res = Response("Your file data has been inserted")
+        res.status = 200
+        return res
+    res = Response("Invalid Method")     
+    res.status = 400
+    return res
 
 @app.route('/login', methods =['POST'])
 def login():
@@ -98,25 +107,25 @@ def login():
         password = request.args.get('password')
         account = mongo.db.users.find_one({"username": username, "password": password})
         if account:
-            res = Response('Logged in successfully')
-            res.headers['current-user'] = account['username']
-            res.status = 200
-            print(account)
             token = jwt.encode({
             'public_id': str(account["_id"]),
             'exp' : datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes = 30)
             }, app.config['SECRET_KEY'])
             res = Response(token)
+            res.headers['current-user'] = account['username']
             res.set_cookie("Authorization", token)
             res.status = 200
             return res
         else:
-            return redirect(url_for('register')), 300
+            res = Response("Invalid Login")
+            res.status = 300
+            return res
     else:  
-        msg = 'Missing Information'
-        return msg, 400
+        res = Response('Missing Information')
+        res.status = 400
+        return res
 
-@app.route('/register', methods =['POST', 'GET'])
+@app.route('/register', methods =['POST'])
 def register():
     msg = ''
     if request.method == 'POST'  and request.args.get('username') and request.args.get('password') and request.args.get('email'):
@@ -125,24 +134,29 @@ def register():
         email = request.args.get('email')
         account = mongo.db.users.find_one({"username": username})
         if account:
-            msg = 'Account already exists !'
-            return msg, 400
+            res = Response('Account already exists !')
+            res.status = 400
+            return res
         elif not re.match(r'[^@]+@[^@]+\.[^@]+', email):
-            msg = 'Invalid email address !'
-            return msg, 400
+            res = Response('Invalid email address !')
+            res.status = 400
+            return res
         elif not re.match(r'[A-Za-z0-9]+', username):
-            msg = 'name must contain only characters and numbers !'
-            return msg, 400
+            res = Response('name must contain only characters and numbers !')
+            res.status = 400
+            return res
         else:
             mongo.db.users.insert_one({"username": username, "password": password, "email": email})
-            msg = 'You have successfully registered!'
-            return msg, 200
+            res = Response('You have successfully registered!')
+            return res
     if request.method == 'GET':
-        msg = "Wrong username / password, you have been redirected to the register endpoint to create an account"
-        return msg, 300
+        res = Response("Wrong username / password, you have been redirected to the register endpoint to create an account")
+        res.status = 300
+        return res
     else:  
-        msg = 'Missing Information'
-        return msg, 400
+        res = Response('Missing Information')
+        res.status = 400
+        return res
 
 @app.route('/delete-account', methods =['DELETE'])
 @token_required
@@ -171,39 +185,47 @@ def deleteAccount(token):
 @token_required
 def changeAccountInfo(token):
     account=''
-    msg = ''
+    msg = ''   
     if request.method == 'PUT' and request.args.get('username') and request.args.get('password'):
         username = request.args.get('username')
         password = request.args.get('password')
         account = mongo.db.users.find_one({"username": username, "password": password})
         if(account and token.get("public_id") != str(account.get("_id"))):
-            return "You can only change your own account info", 401
+            res = Response("You can only change your own account info")
+            res.status = 401
+            return res
         if account:
             if request.headers.get('new-username') and request.headers.get('new-password'):
                 newUsername = request.headers.get('new-username')
                 newPassword = request.headers.get('new-password')
                 mongo.db.users.update_one(account, {"$set": {"username": newUsername, "password": newPassword}})
-                msg = f'Username updated to {newUsername}\nPassword updated'
-                return msg, 200
+                res = Response(f'Username updated to {newUsername}\nPassword updated')
+                res.status = 200
+                return res
             elif request.headers.get('new-username'):
                 newUsername = request.headers.get('new-username')
                 mongo.db.users.update_one(account, {"$set": {"username": newUsername}})
-                msg = f'Username updated to {newUsername}'
-                return msg, 200
+                res = Response(f'Username updated to {newUsername}')
+                res.status = 200
+                return res
             elif request.headers.get('new-password'):
                 newPassword = request.headers.get('new-password')
                 mongo.db.users.update_one(account, {"$set": {"password": newPassword}})
-                msg = 'Password updated'
-                return msg, 200
+                res = Response('Password updated')
+                res.status = 200
+                return res
             else:
-                msg = 'No information was provided to update'
-                return msg, 400
+                res = Response('No information was provided to update')
+                res.status = 400
+                return res
         else:
-            msg = 'Incorrect username / password!'
-            return msg, 400
+            res = Response('Incorrect username / password!')
+            res.status = 400
+            return res
     else:  
-        msg = 'Missing Information'
-        return msg, 400
+        res = Response('Missing Information')
+        res.status = 400
+        return res
 
 if __name__ == '__main__':
     import sys

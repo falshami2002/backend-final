@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+    <title>Change Account Info</title>
     <style>
         .topnav {
             background-color: #333;
@@ -36,42 +36,52 @@
     <div class="topnav">
         <a href="index.html">Home</a>
         <a href="login.html">Login</a>
-        <a class="active" href="register.html">Register</a>
+        <a href="register.html">Register</a>
         <a href="add-injury.html">Add Injury</a>
         <a href="search_injury.html">Search Team</a>
-        <a href="change-account-info.html">Change Account Info</a>
+        <a class="active" href="change-account-info.html">Change Account Info</a>
         <a href="delete-account.html">Delete Account</a>
     </div>
 
-    <h1>Register</h1>
+    <h1>Change Account Info</h1>
 
-    <form id="registerForm">
+    <form id="changeAccountInfoForm">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
 
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required><br><br>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br><br>
+        <label for="newUsername">New Username:</label>
+        <input type="text" id="newUsername" name="newUsername"><br><br>
 
-        <button type="submit">Register</button>
+        <label for="newPassword">New Password:</label>
+        <input type="password" id="newPassword" name="newPassword"><br><br>
+
+        <button type="submit">Change Info</button>
     </form>
     <h2 id="status"></h2>
     <script>
-        document.getElementById('registerForm').addEventListener('submit', function (event) {
+        document.getElementById('changeAccountInfoForm').addEventListener('submit', function (event) {
             event.preventDefault();
 
-            const formData = new FormData(this);
+            const formData = new FormData(event.target);
+            console.log(event.target)
 
-            let url = new URL("http://127.0.0.1:5000/register")
+            let url = new URL("http://127.0.0.1:5000/change-account-info")
 
-            formData.forEach((value, key) => {
-                url.searchParams.append(key, value);
-            });
+            url.searchParams.append('username', document.getElementById("username").value);
+            url.searchParams.append('password', document.getElementById("password").value);
+
+            console.log(url)
 
             fetch(url, {
-                method: 'POST'
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'new-username': document.getElementById("newUsername").value,
+                    'new-password': document.getElementById("newPassword").value
+                }
             })
                 .then(response => response.text())
                 .then(data => {
@@ -80,7 +90,6 @@
                 })
         })
     </script>
-
 </body>
 
 </html>

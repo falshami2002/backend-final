@@ -3,81 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Injury Tracker</title>
+    <title>Home</title>
+    <style>
+        .topnav {
+            background-color: #333;
+            overflow: hidden;
+        }
+
+        .topnav a {
+            float: left;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            font-size: 17px;
+        }
+
+        .topnav a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+
+        .topnav a.active {
+            background-color: #04AA6D;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-    <h1>Injury Tracker</h1>
+    <div class="topnav">
+        <a class="active" href="index.html">Home</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+        <a href="add-injury.html">Add Injury</a>
+        <a href="search_injury.html">Search Team</a>
+        <a href="change-account-info.html">Change Account Info</a>
+        <a href="delete-account.html">Delete Account</a>
+    </div>
 
-    <h2>Login</h2>
-    <form id="loginForm">
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required><br><br>
+    <h1>Welcome to Injury Tracker</h1>
 
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br><br>
-
-        <button type="submit">Login</button>
-    </form>
-
-    <h2>Register</h2>
-    <form id="registerForm">
-        <label for="newUsername">Username:</label>
-        <input type="text" id="newUsername" name="newUsername" required><br><br>
-
-        <label for="newPassword">Password:</label>
-        <input type="password" id="newPassword" name="newPassword" required><br><br>
-
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br><br>
-
-        <button type="submit">Register</button>
-    </form>
-
-    <script>
-        document.getElementById("loginForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
-
-            fetch("/login?username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password), {
-                method: "POST"
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.href = "/dashboard";
-                } else {
-                    alert("Login failed. Please check your username and password.");
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("An error occurred. Please try again later.");
-            });
-        });
-
-        document.getElementById("registerForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            
-            const newUsername = document.getElementById("newUsername").value;
-            const newPassword = document.getElementById("newPassword").value;
-            const email = document.getElementById("email").value;
-
-            fetch("/register?username=" + encodeURIComponent(newUsername) + "&password=" + encodeURIComponent(newPassword) + "&email=" + encodeURIComponent(email), {
-                method: "POST"
-            })
-            .then(response => {
-                if (response.ok) {
-                    alert("Registration successful!");
-                } else {
-                    alert("Registration failed. Please try again.");
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("An error occurred. Please try again later.");
-            });
-        });
-    </script>
+    <p>This is the home page.</p>
 </body>
 </html>
