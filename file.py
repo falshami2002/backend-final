@@ -72,7 +72,7 @@ def get_user_by_name(token, teamname):
 @token_required
 def addInjuries(token):
     if request.args.get('method') == 'JSON':
-        json = request.get_json()
+        json = jsonmodule.loads(request.get_json(force=True))
         mongo.db.injuries.insert_many(json)
         res = Response("Your JSON data has been inserted")
         res.status = 200
@@ -87,7 +87,8 @@ def addInjuries(token):
         res.status = 200
         return res
     elif request.args.get('method') == 'file':
-        file = request.files['file']        
+        file = request.files['file']   
+        print(file)     
         myFile = jsonmodule.loads(file.read())
         for injury in myFile:
             mongo.db.injuries.insert_one({"player": injury.get("player"), "team": injury.get("team"), "injury": injury.get("injury"), "returnDate": injury.get("returnDate")})

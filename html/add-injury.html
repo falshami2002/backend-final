@@ -29,6 +29,11 @@
             background-color: #04AA6D;
             color: white;
         }
+        
+        #json {
+            height: 100px;
+            width: 200px;
+        }
     </style>
 </head>
 
@@ -60,6 +65,18 @@
 
         <button type="submit">Add Injury</button>
     </form>
+    <br><br>
+    <form id="jsonForm">
+        <label for="json">JSON</label>
+        <textarea id="json" name="json" required></textarea><br><br>
+        <button type="submit">Add Injuries</button>
+    </form>
+    <br><br>
+    <form id="fileForm">
+        <label for="file">JSON File</label>
+        <input type="file" id="file" name="file"><br><br>
+        <button type="submit">Add Injuries</button>
+    </form>
     <h2 id="status"></h2>
     <script>
         document.getElementById('addInjuryForm').addEventListener('submit', function (event) {
@@ -76,6 +93,54 @@
                 method: 'POST',
                 credentials: 'include',
                 body: data
+            })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    document.getElementById("status").innerHTML = data;
+                })
+        })
+        document.getElementById('jsonForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            let jsonData = document.getElementById("json").value
+
+            let url = new URL("http://127.0.0.1:5000/add-injuries")
+
+            url.searchParams.append("method", "JSON")
+            console.log(JSON.parse(jsonData))
+
+            fetch(url, {
+                method: 'POST',
+                credentials: 'include',
+                body: JSON.stringify(jsonData),
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }, 
+            })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    document.getElementById("status").innerHTML = data;
+                })
+        })
+        document.getElementById('fileForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            let file = document.getElementById("file").files[0]
+
+            let url = new URL("http://127.0.0.1:5000/add-injuries")
+
+            url.searchParams.append("method", "file")
+
+            let formData = new FormData();
+            formData.append('file', file);
+
+            fetch(url, {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
             })
                 .then(response => response.text())
                 .then(data => {
